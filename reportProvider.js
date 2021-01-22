@@ -35,5 +35,17 @@ var exports = (module.exports = {
       report_update: reportUpdate
     };
     return requestUtil.post(host, port, path, body);
+  },
+  
+  describeReport: function(slackUserId, reportId) {
+    const host = process.env.SLACKFORCE_URL;
+    const port = `443`;
+    const path = `/describeReport`;
+    const body = {
+      user_id: slackUserId,
+      report_name: "foo",
+      report_id: reportId
+    };
+    return requestUtil.post(host, port, path, body);
   }
 });
