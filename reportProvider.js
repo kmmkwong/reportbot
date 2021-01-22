@@ -13,13 +13,26 @@ var exports = (module.exports = {
     return requestUtil.post(host, port, path, body);
   }, 
   
-  runReports: function(slackUserId, reportId) {
+  runReport: function(slackUserId, reportId) {
     const host = process.env.SLACKFORCE_URL;
     const port = `443`;
     const path = `/runReport`;
     const body = {
       user_id: slackUserId,
       report_id: reportId
+    };
+    return requestUtil.post(host, port, path, body);
+  },
+  
+  updateReport: function(slackUserId, reportId, reportUpdate) {
+    const host = process.env.SLACKFORCE_URL;
+    const port = `443`;
+    const path = `/updatereport`;
+    const body = {
+      user_id: slackUserId,
+      report_name: "foo",
+      report_id: reportId,
+      report_update: reportUpdate
     };
     return requestUtil.post(host, port, path, body);
   }
