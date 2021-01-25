@@ -69,7 +69,12 @@ app.action('reportFilter', async ({action, client, ack, respond, body }) => {
         ]
       }
     ];
-    filterModalContents = filterModalContents.concat(headerSection, currentFiltersSection, filterChangeRemoveActions, divider, filterCreatorSection);
+    if (filterObj.filters.length === 0) {
+      filterModalContents = filterModalContents.concat(headerSection, currentFiltersSection, divider, filterCreatorSection);
+    } else {
+      filterModalContents = filterModalContents.concat(headerSection, currentFiltersSection, filterChangeRemoveActions, divider, filterCreatorSection);
+    }
+
     const extraData = {
       channelId: body.channel.id,
       reportId: filterObj.reportId
@@ -343,51 +348,13 @@ let publishReport = async (action, body, client, isInitialReportRun) => {
 app.action('reportSearch', async ({ action, client, ack, respond, body }) => {
   await ack();
   publishReport(action, body, client, true);
-//   browser = await puppeteer.launch({
-//     args: ['--no-sandbox']
-//   });
-//   const page = await browser.newPage();
-//   const valueObj = JSON.parse(action.value);
-//   const reportResults = await reportProvider.runReport(body.user.id, valueObj.reportId);
-//   if (reportResults.error) {
-//     await client.chat.postMessage({
-//       channel: body.channel.id,
-//       text: reportResults.error
-//     })
-//   }
-//   const html = tableUtil.createFormattedReport(reportResults.result);
-//   await page.setContent(html, {
-//     waitUntil: 'domcontentloaded'
-//   });
-//   const img = await page.screenshot({path: 'imgs/' + reportResults.reportName + '.png', fullPage: true});
-//   await browser.close();
-//   const file = fs.createReadStream('imgs/' + reportResults.reportName + '.png');
-//   const aggregateBlocks = blockFormatter.getBlocksForReportAggregates(reportResults.result, valueObj.reportUrl, body.user.id);
-  
-//   const clientMessage = await client.chat.postMessage({
-//     channel: body.channel.id,
-//     blocks: aggregateBlocks
-//   });
-//   const result = await client.files.upload({
-//     channels: body.channel.id,
-//     file: file
-//   });
-  
-//   const nextSteps = await client.chat.postMessage({
-//     channel: body.channel.id,
-//     blocks: blockFormatter.getBlocksForReportAction(reportResults.result),
-//   });
   await respond("Here is your report  <@" + body.user.id + ">!");
 });
 
 app.action('pinReport', async ({ action, client, ack, respond, body }) => {
   await ack();
-  // console.log("--- pinReport client ---");
-  // console.log(client);
-  // console.log("--- pinReport action ---");
-  // console.log(action);
-  // console.log("--- pinReport body ---");
-  // console.log(body);
+  
+  // Pin/unpin report
   const valueObj = JSON.parse(action.value);
   const isPinned = pinManager.isPinned(body.user.id, valueObj.reportId);
   const done = isPinned ? "unpinned" : "pinned";
@@ -396,10 +363,13 @@ app.action('pinReport', async ({ action, client, ack, respond, body }) => {
   } else {
     pinManager.pin(body.user.id, valueObj.reportId);    
   }
+  
+  // If the action is from app's home, refresh home; else if it is from a channel, post a message
+  // to let user know a pin has been added/removed
   if (body.view && body.view.type === "home") {
       publishHome(client, body.user.id);
   } else if (body.channel && body.channel.id) {
-    const message = "I have " + done + " this report for your <@" + body.user.id + "> - " + valueObj.reportName;
+    const message = "I have " + done + " this report for you <@" + body.user.id + "> - " + valueObj.reportName;
     // await respond(helloMessage);
     await client.chat.postMessage({
       channel: body.channelId || body.channel.id,
@@ -643,42 +613,6 @@ try {
 
 app.event("app_home_opened", async ({ event, client, context }) => {
     publishHome(client, event.user);
-//   try {
-    
-//     // call to run all reports that have been pinned. 
-//     const pinReportIds = pinManager.getPinned(event.user);
-//     const runPromises = pinReportIds.map((reportId) => reportProvider.runReport(event.user, reportId));
-//     const allResults = await Promise.all(runPromises.map(p => p.catch(e => e)));
-//     const reportResults = allResults.filter(result => !(result instanceof Error)); // filter and ignore errors
-    
-//     console.log("app_home_open report run results: " + reportResults.length);
-//     console.log(reportResults);
-
-//     let blocks = [];
-//     reportResults.forEach((result) => {
-//       const aggregateBlocks = blockFormatter.getBlocksForReportAggregates(result, event.user);
-//       blocks = blocks.concat(aggregateBlocks);
-//       blocks.push({
-//         "type": "divider"
-//       });
-//     });
-    
-    
-//     /* view.publish is the method that your app uses to push a view to the Home tab */
-//     const result = await client.views.publish({
-//       /* the user that opened your app's app home */
-//       user_id: event.user,
-
-//       /* the view object that appears in the app home*/
-//       view: {
-//         type: "home",
-//         callback_id: "home_view",
-//         blocks
-//       }
-//     });
-//   } catch (error) {
-//     console.error(error);
-//   }
 });
 
 app.event("app_mention", async ({ event, client, context }) => {
@@ -692,6 +626,7 @@ app.event("app_mention", async ({ event, client, context }) => {
   console.log(textArray[1]);
   
   switch (command) {
+    // To run the bot, in slack channel, say @Reports Bot run <search string>
     case "run":
       const searchText = textArray.length > 2 ? textArray[2] : "";
       reportProvider.findReports(event.user, searchText, 5).then((res) => {
@@ -721,6 +656,8 @@ app.event("app_mention", async ({ event, client, context }) => {
         console.log(err);              
       });
       break;
+      
+    // Test code to run trigger a REST to sfslackforce node server
     case "runReportTest":
       const reportId = textArray.length > 2 ? textArray[2] : "";
       // const reportUpdate = textArray.length > 3 ? textArray[3] : "";
@@ -767,6 +704,8 @@ app.event("app_mention", async ({ event, client, context }) => {
         });
       }
       break;
+      
+    // Test code for subscription dialogs
     case "testbutton":
       //console.log(event);
       const helloMessage = "Hello <@" + event.user + ">! Testing button. Click it.";
@@ -800,6 +739,9 @@ app.event("app_mention", async ({ event, client, context }) => {
         console.error(error);
       }
       break;
+      
+      
+    // To start using bot, type in Slack channel e.g. : @Reports Bot hi.  Then this code will respond with an info message. 
     default: {
 //      console.log(event);
       const helloMessage = "Hello <@" + event.user + ">!  Tell me which report you would like to run.  Try 'run [report name]'";

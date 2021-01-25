@@ -427,7 +427,14 @@ module.exports = {
       })
     }
     
-    const firstSortField = sortFields[0];
+    let firstSortField = sortFields[0];
+    if (!firstSortField) {
+      firstSortField = {
+        sortColumnLabel: " ",
+        sortColumn: " ",
+        sortOrder: " "
+      };
+    }
     return [
       {
         "type": "section",
